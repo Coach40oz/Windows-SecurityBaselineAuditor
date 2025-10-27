@@ -1,199 +1,182 @@
-🔒 Windows Security Baseline Auditor
+# 🔒 **Windows Security Baseline Auditor**
 
-A PowerShell script that audits Windows Server and Workstation security posture against simplified best practices inspired by CIS, NIST, and Microsoft baselines.
-Outputs colorized console status, timestamped logs, and an exportable CSV of failed/warning checks—ready for RMM deployment at scale.
+A PowerShell script that audits **Windows Server and Workstation security posture** against simplified best practices inspired by **CIS**, **NIST**, and **Microsoft** baselines.
 
-✨ Highlights
+Outputs **colorized console status**, **timestamped logs**, and an **exportable CSV** of failed/warning checks—ready for **RMM deployment at scale**.
 
-Baseline Coverage: Account policies, local security policy (UAC, built-ins), audit policy, services, firewall, network stack (SMB1/NetBIOS/IPv6), Defender, BitLocker, Windows Update recency.
+---
 
-Clear Results: Pass / Warning / Fail with expected vs actual, severity, and remediation guidance.
+## ✨ **Highlights**
 
-RMM-Ready: Zero interactive prompts; logs + CSV stored under C:\Logs\SecurityAudit\….
+| Feature               | Description                                                                                                                                                                 |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Baseline Coverage** | Account policies, local security policy (UAC, built-ins), audit policy, services, firewall, network stack (SMB1/NetBIOS/IPv6), Defender, BitLocker, Windows Update recency. |
+| **Clear Results**     | Pass / Warning / Fail with expected vs. actual, severity, and remediation guidance.                                                                                         |
+| **RMM-Ready**         | Zero interactive prompts; logs + CSV stored under `C:\Logs\SecurityAudit\...`.                                                                                              |
+| **Self-Contained**    | Creates its log directory, handles temp exports (`secedit` / `auditpol`), and cleans up.                                                                                    |
+| **Score at a Glance** | Overall Compliance Score based on pass ratio.                                                                                                                               |
 
-Self-Contained: Creates its log directory, handles temp exports (secedit/auditpol), and cleans up.
+---
 
-Score at a Glance: Overall Compliance Score based on pass ratio.
+## ✅ **Compatibility**
 
-✅ Compatibility
+| Requirement    | Details                                                                                      |
+| -------------- | -------------------------------------------------------------------------------------------- |
+| **OS**         | Windows Server 2016+, Windows 10/11                                                          |
+| **PowerShell** | Windows PowerShell 5.1 (built-in on supported OSes)                                          |
+| **Rights**     | Run as **Administrator** (required for security policy export, services, and registry reads) |
 
-OS: Windows Server 2016+; Windows 10/11
+---
 
-PowerShell: Windows PowerShell 5.1 (built-in on supported OSes)
-
-Rights: Run as Administrator (required for security policy export, services, registry reads)
-
-🚀 Quick Start (one-liner)
+## 🚀 **Quick Start (One-Liner)**
 
 Runs from GitHub Raw and immediately audits the local machine.
 
+```powershell
 iwr https://raw.githubusercontent.com/Coach40oz/Windows-SecurityBaselineAuditor/refs/heads/main/script.ps1 -UseBasicParsing | iex
+```
 
+> **Tip (RMM):** If your RMM requires an explicit bypass:
+>
+> ```powershell
+> powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "iwr https://raw.githubusercontent.com/Coach40oz/Windows-SecurityBaselineAuditor/refs/heads/main/script.ps1 -UseBasicParsing | iex"
+> ```
 
-Tip (RMM): If your RMM requires an explicit bypass:
+---
 
-powershell.exe -ExecutionPolicy Bypass -NoProfile -Command "iwr https://raw.githubusercontent.com/Coach40oz/Windows-SecurityBaselineAuditor/refs/heads/main/script.ps1 -UseBasicParsing | iex"
+## 🧠 **Audit Categories**
 
-🧠 What It Checks (summary)
+### **Account Policies**
 
-Account Policies
+* Password history, minimum/maximum age, length, complexity
+* Lockout threshold, duration, and reset window
 
-Password history, min/max age, min length, complexity
+### **Local Security Policies**
 
-Lockout threshold, duration, and reset window
+* Built-in **Administrator/Guest** account status
+* **Deny access from network** for Guest
+* Local account model: *Classic* vs. *Guest-only*
+* **UAC** settings and Admin Approval Mode
 
-Local Security Policies
+### **Audit Policies**
 
-Built-in Administrator/Guest account status
+* Credential Validation, Logon, User Account Management
+* File System auditing enabled for sensitive paths
 
-Deny access from network for Guest
+### **Registry & Host Controls**
 
-Local accounts Classic vs Guest-only model
+* **Remote Registry** service disabled
+* **Windows Firewall** active across Domain/Public/Private
+* **Autoplay/Autorun** disabled
+* **Automatic Updates** correctly configured
 
-UAC prompts (admins & standard users) and Admin Approval Mode
+### **Services & Network Settings**
 
-Audit Policies
+* Disabled: ICS, UPnP, SMB helpers, etc.
+* Running: Event Log, Firewall, Defender
+* **SMBv1** and **NetBIOS** disabled
+* **IPv6** warnings (when misconfigured)
+* Shared resources enumerated and validated
 
-Credential Validation, Logon, User Account Management
+### **Advanced Checks**
 
-File System auditing configured where needed
+* **Windows Defender** health & signature age
+* **BitLocker** OS drive protection
+* **Windows Update** last detection recency
 
-Registry & Host Controls
+---
 
-Remote Registry service disabled
+## 📂 **Output Files**
 
-Windows Firewall enabled for Domain/Public/Private profiles
+| File           | Description                                                                         |
+| -------------- | ----------------------------------------------------------------------------------- |
+| **Log File**   | `C:\Logs\SecurityAudit\SecurityAudit_YYYYMMDD_HHMMSS.log` (full details)            |
+| **CSV Report** | `C:\Logs\SecurityAudit\SecurityAudit_YYYYMMDD_HHMMSS.csv` (failed & warning checks) |
 
-Autoplay/Autorun disabled
+> To export all results (not just fails/warnings), toggle `$IncludeAllResults = $true` inside the script.
 
-Automatic Updates state (policies & fallback)
+---
 
-Services
+## 🔧 **How It Works**
 
-Expected disabled (e.g., ICS, UPnP, SMB helpers, etc.)
+| Component                          | Method                                                                         |
+| ---------------------------------- | ------------------------------------------------------------------------------ |
+| **Local Security Policy**          | Uses `secedit` to export policy data and parse values.                         |
+| **Audit Policy**                   | Executes `auditpol /get /category:* /r` for inclusion checks.                  |
+| **Services & Registry**            | Reads via native cmdlets and registry paths.                                   |
+| **Defender / BitLocker / Updates** | Pulls via `Get-MpComputerStatus`, `Get-BitLockerVolume`, and registry queries. |
+| **Scoring**                        | `ComplianceScore = (Passed / Total) * 100`, rounded to 2 decimals.             |
 
-Expected running (Event Log, Firewall, Defender)
+---
 
-Network Settings
+## 🛠️ **RMM Deployment Tips**
 
-SMBv1 disabled
+* Always run as **System or Admin**.
+* Compatible with: **Gorelo**, **NinjaOne**, **Datto**, **Atera**, **Kaseya**, etc.
+* Generates output locally; **no external dependencies or network calls**.
 
-NetBIOS over TCP/IP disabled
+Example RMM execution:
 
-IPv6 status (warn if enabled but not required)
-
-Non-default network shares flagged
-
-Advanced
-
-Windows Defender real-time and signature age
-
-BitLocker OS drive protection status
-
-Windows Update last detection recency
-
-📦 Output & Artifacts
-
-Console: Colorized summary with Pass / Warning / Fail counts and Compliance Score.
-
-Logs: C:\Logs\SecurityAudit\SecurityAudit_YYYYMMDD_HHMMSS.log
-
-CSV: C:\Logs\SecurityAudit\SecurityAudit_YYYYMMDD_HHMMSS.csv
-Columns: Category, CheckName, Description, Result, ExpectedValue, ActualValue, Severity, Recommendation, Reference
-
-By default, the CSV includes only Warnings/Failures to focus remediation. Flip $IncludeAllResults = $true in the script to export everything.
-
-🛠 How It Works (internals)
-
-Local/Domain Context: Uses secedit to export local security policy and parses key values.
-
-Audit Policy: Uses auditpol /get /category:* /r and inspects inclusion settings.
-
-Services/Firewall/Registry: Native cmdlets + registry queries for deterministic reads.
-
-Defender/BitLocker/Updates: Uses Get-MpComputerStatus, Get-BitLockerVolume, and Windows Update registry.
-
-Scoring: ComplianceScore = Passed / Total * 100 (rounded to 2 decimals).
-
-🧰 RMM Deployment Notes
-
-Run As: System or Admin; must have local admin rights.
-
-Network: No external downloads required; runs offline.
-
-Exit Codes: Writes failures to log/CSV; the script itself is informational. If you want hard failure for CI/RMM, add an exit condition on $Results.Summary.FailedChecks.
-
-Example RMM command line:
-
+```powershell
 powershell.exe -ExecutionPolicy Bypass -NoProfile -File .\script.ps1
+```
 
+---
 
-Or directly via raw one-liner (above).
+## 🔒 **Security & Compliance Notes**
 
-🔒 Security Notes
+* **Read-Only Audit:** Makes **no changes** to the system.
+* **Requires Elevation:** Some checks (BitLocker, Defender) need admin rights.
+* **Safe for Offline Use:** No internet dependency post-download.
+* **Data Ownership:** Logs remain on the host; no upload or telemetry.
 
-Read-only posture: The script does not change settings; it audits and recommends.
+---
 
-Least Privilege: Some queries require elevation; non-admin runs will show more “Warning/Fail” due to access limits.
+## 🚑 **Troubleshooting**
 
-Data at Rest: Logs and CSVs are local only (no exfil). Ensure C:\Logs\SecurityAudit fits your data retention policy.
+| Symptom                  | Likely Cause                       | Resolution                   |
+| ------------------------ | ---------------------------------- | ---------------------------- |
+| Access Denied errors     | Not run as Administrator           | Relaunch elevated PowerShell |
+| Missing Defender Data    | Defender not installed or disabled | Verify AV configuration      |
+| BitLocker status unknown | No TPM or unsupported SKU          | Review encryption method     |
+| Auditpol parsing errors  | Localized OS (non-English)         | Adjust property name mapping |
 
-🧯 Troubleshooting
+---
 
-Access Denied / Missing Data
+## 🔍 **Roadmap / Upcoming Improvements**
 
-Ensure elevated context (Admin). Some providers (e.g., BitLocker, Defender) need elevation.
+* ✅ **JSON Output** for SIEM ingestion
+* ✅ **HTML Dashboard** for visual summaries (opt-in)
+* ✅ **Remediation Mode** with safe defaults and rollback
+* ✅ **Baseline Mapping** (CIS/NIST IDs per check)
+* ✅ **Exclusion Profile** to honor justifications (e.g., WSUS, Smart Card)
+* ✅ **Central Aggregation** script for fleet summaries
+* ✅ **Language Localization** support for `auditpol`
 
-Windows Defender Cmdlets Missing
+> Contributions welcome! Submit pull requests or open issues to suggest new baseline checks or RMM integrations.
 
-On some Server SKUs, Defender components may be not installed/managed by a third-party AV. Script will warn and recommend verification.
+---
 
-BitLocker Status Unknown
+## 🔗 **License**
 
-If Get-BitLockerVolume fails, the script falls back to TPM presence as a Warning (not a Fail).
+Licensed under the **MIT License**. You are free to use, modify, and distribute with attribution.
 
-Auditpol CSV Parsing
+---
 
-Locale differences can alter headers; script expects default English column names. If localized, adjust the Subcategory/Inclusion Setting property names accordingly.
+## 👤 **Author**
 
-🗺️ Roadmap (in progress)
+**Ulises Paiz (Coach40oz / Ghosxt Labs)**
+Founder, Ghosxt IT Services — *Managed Security & Infrastructure Engineering*
+🌐 [ghosxt.com](https://ghosxt.com)
 
-GPO Export Attachment: Bundle relevant secpol deltas or a pre-canned GPO backup for rapid remediation.
+---
 
-HTML/MD Report (optional): Static report artifact with filters and per-host diff (off by default to stay RMM-friendly).
+## 🔒 **Repository Info**
 
-Remediation Mode (opt-in): Toggle to automatically apply recommended fixes with safety-rails + rollback.
+| Name                    | Value                                                                                                                                                                                                                                  |      |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
+| **Repo**                | [Windows-SecurityBaselineAuditor](https://github.com/Coach40oz/Windows-SecurityBaselineAuditor)                                                                                                                                        |      |
+| **Script**              | `script.ps1`                                                                                                                                                                                                                           |      |
+| **Raw URL (One-Liner)** | `iwr [https://raw.githubusercontent.com/Coach40oz/Windows-SecurityBaselineAuditor/refs/heads/main/script.ps1](https://raw.githubusercontent.com/Coach40oz/Windows-SecurityBaselineAuditor/refs/heads/main/script.ps1) -UseBasicParsing | iex` |
 
-CIS Mapping Table: Enrich CSV with precise CIS benchmark versions and machine-readable control IDs.
-
-Exclusions Profile: Allow org-specific justifications (e.g., Smart Card required) to suppress noise in score.
-
-Centralized Upload Hook: Optional connector (e.g., to an SMB/HTTPS drop) for fleet aggregation.
-
-Intune/Defender for Endpoint Signals: Optional enrichment when available.
-
-Localization: Header mapping for non-EN auditpol outputs.
-
-Have a feature you need for MSP scale? Open an Issue with your environment constraints and we’ll prioritize.
-
-📜 License
-
-MIT. See LICENSE.
-
-🤝 Contributing
-
-PRs welcome:
-
-Keep everything RMM-safe (non-interactive, no external deps).
-
-Prefer native cmdlets before external binaries.
-
-Add tests or at least a sample run output for new checks.
-
-Don’t default to remediation—keep audit behavior as default.
-
-🧾 About
-
-Windows Security Baseline Auditor by Ghosxt Labs (Coach40oz).
-Purpose-built for MSP fleet hygiene: quick posture read, actionable CSV, no surprises.
-If you deploy this with Gorelo, Kaseya, NinjaOne, Atera, or Intune—share notes so we can optimize defaults.
+---
