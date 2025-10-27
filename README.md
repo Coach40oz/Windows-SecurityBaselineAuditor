@@ -165,7 +165,7 @@ Licensed under the **MIT License**. You are free to use, modify, and distribute 
 
 ## 👤 **Author**
 
-**Ulises Paiz (Coach40oz / Ghosxt Labs)**
+**Ulises Paiz (Coach40oz / Ghosxt)**
 Founder, Ghosxt IT Services — *Managed Security & Infrastructure Engineering*
 🌐 [ghosxt.com](https://ghosxt.com)
 
